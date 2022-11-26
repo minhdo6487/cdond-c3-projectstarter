@@ -197,37 +197,37 @@ jobs:
 
   configure-infrastructure:
     docker:
-      - image: circleci/python:3.6.2
-    environment:
-      - ANSIBLE_HOST_KEY_CHECKING: False
-      - ANSIBLE_LOCAL_TEMP: /home/circleci/.ansible/tmp
-      - ANSIBLE_REMOTE_TEMP: /home/circleci/.ansible/tmp
+      - image: python:3.7-alpine3.11
+        environment:
+          NODE_ENV: "local"
+          VERSION: "1"
+          ENVIRONMENT: "production"
+          TYPEORM_CONNECTION: $TYPEORM_CONNECTION
+          TYPEORM_HOST: $TYPEORM_HOST
+          TYPEORM_USERNAME: $TYPEORM_USERNAME
+          TYPEORM_PASSWORD: $TYPEORM_PASSWORD
+          TYPEORM_DATABASE: $TYPEORM_DATABASE
+          TYPEORM_PORT: $TYPEORM_PORT
+          TYPEORM_ENTITIES: $TYPEORM_ENTITIES
     steps:
       - checkout
       - add_ssh_keys:
-          fingerprints: "91:4a:be:91:bf:ec:bd:18:cc:1e:dc:e3:04:42:27:f3"
-      - run:
-          name: Install dependencies
-          command: |
-            python3 -m venv env
-            . env/bin/activate
-            pip install --upgrade pip
-            pip install setuptools-rust
-            pip install ansible
-            sudo apt update
-            sudo apt install rsync
-            sudo apt-get install ansible
+          fingerprints: [ "45:44:e9:b4:35:84:f7:3f:e3:f9:5f:e5:a0:95:2a:b1" ]
       - attach_workspace:
           at: ~/
       - run:
+          name: Install dependencies
+          command: |
+            apk add curl
+            apk add --upgrade bash
+            apk add --update ansible
+            apk add openssh-client
+            pip3 install awscli
+      - run:
           name: Configure server
           command: |
-            sudo apt install rsync
-            sudo apt-get install ansible
-            pwd &&
-            ls -la
-            echo "IP address:"
             cat ~/project/.circleci/ansible/inventory.txt
+            export ANSIBLE_HOST_KEY_CHECKING=False
             ansible-playbook -i ~/project/.circleci/ansible/inventory.txt ~/project/.circleci/ansible/configure-server.yml
 #      - destroy_environment:
 #          id: ${CIRCLE_WORKFLOW_ID:0:7}
