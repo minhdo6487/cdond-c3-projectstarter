@@ -143,6 +143,7 @@ jobs:
       - checkout
       - run:
         name: Ensure back-end infrastructure exists
+        working_directory: ./.circleci/files
         command: |
            aws cloudformation deploy \
               --template-file backend.yaml \
@@ -151,6 +152,7 @@ jobs:
               --tags project=udapeople-backend-${CIRCLE_WORKFLOW_ID:0:7}
       - run:
         name: Ensure front-end infrastructure exist
+        working_directory: ./.circleci/files
         command: |
            aws cloudformation deploy \
               --template-file frontend.yaml \
@@ -166,6 +168,9 @@ jobs:
          root: ~/
          paths:
            - project/.circleci/ansible/inventory.txt
+      - destroy_environment:
+          id: ${CIRCLE_WORKFLOW_ID:0:7}
+          when: on_fail
      # Here's where you will add some code to rollback on failure
 
   # configure-infrastructure:
