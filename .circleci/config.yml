@@ -218,9 +218,12 @@ jobs:
             pip install ansible
             sudo apt update
             sudo apt install rsync
+            sudo apt-get install ansible
       - run:
           name: Configure server
           command: |
+            sudo apt install rsync
+            sudo apt-get install ansible
             pwd &&
             ls -la
             cd .circleci/ansible
