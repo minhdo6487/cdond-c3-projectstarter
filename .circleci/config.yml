@@ -196,7 +196,12 @@ jobs:
           when: on_fail
 
   configure-infrastructure:
-    executor: python
+    docker:
+      - image: circleci/python:3.6.2
+    environment:
+      - ANSIBLE_HOST_KEY_CHECKING: False
+      - ANSIBLE_LOCAL_TEMP: /home/circleci/.ansible/tmp
+      - ANSIBLE_REMOTE_TEMP: /home/circleci/.ansible/tmp
     steps:
       - checkout
       - add_ssh_keys:
@@ -206,7 +211,12 @@ jobs:
       - run:
           name: Install dependencies
           command: |
-            apk add -update ansible
+            python3 -m venv env
+            . env/bin/activate
+            pip install ansible
+            pip install -r requirements.txt
+            sudo apt update
+            sudo apt install rsync
       - run:
           name: Configure server
           command: |
