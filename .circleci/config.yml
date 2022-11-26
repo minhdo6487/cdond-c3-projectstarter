@@ -185,7 +185,6 @@ jobs:
             - project/.circleci/ansible/inventory.txt
       - destroy_environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
-#          when: on_fail
 
   configure-infrastructure:
     docker:
@@ -204,7 +203,7 @@ jobs:
     steps:
       - checkout
       - add_ssh_keys:
-          fingerprints: [ "45:44:e9:b4:35:84:f7:3f:e3:f9:5f:e5:a0:95:2a:b1" ]
+          fingerprints: [ "91:4a:be:91:bf:ec:bd:18:cc:1e:dc:e3:04:42:27:f3" ]
       - attach_workspace:
           at: ~/
       - run:
@@ -223,7 +222,6 @@ jobs:
             ansible-playbook -i ~/project/.circleci/ansible/inventory.txt ~/project/.circleci/ansible/configure-server.yml
       - destroy_environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
-#          when: on_fail
 
   run-migrations:
     docker:
@@ -271,43 +269,73 @@ jobs:
       - revert_migrations:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
 
-  # deploy-frontend:
-  #   docker:
-  #     # Docker image here that supports AWS CLI
-  #   steps:
-  #     # Checkout code from git
-  #     - run:
-  #         name: Install dependencies
-  #         command: |
-  #           # your code here
-  #     - run:
-  #         name: Get backend url
-  #         command: |
-  #           # your code here
-  #           export API_URL="http://${BACKEND_IP}:3030"
-  #           echo "${API_URL}"
-  #     - run:
-  #         name: Deploy frontend objects
-  #         command: |
-  #           # your code here
-  #     # Here's where you will add some code to rollback on failure      
-                    
-  # deploy-backend:
-  #   docker:
-  #     # Docker image here that supports Ansible
-  #   steps:
-  #     # Checkout code from git
-  #     # Add ssh keys with fingerprint
-  #     # attach workspace
-  #     - run:
-  #         name: Install dependencies
-  #         command: |
-  #           # your code here
-  #     - run:
-  #         name: Deploy backend
-  #         command: |
-  #           # your code here
-  #     # Here's where you will add some code to rollback on failure  
+  deploy-frontend:
+    docker:
+      - image: sleavely/node-awscli:14.x
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /root
+      - run:
+          name: Get backend url
+          command: |
+            API_URL=$(curl -H "Content-Type: text/plain" \
+            -H "token: ecdfc255-81e1-4056-9efa-2d7fa10812e1" \
+            --request GET \
+            https://api.memstash.io/values/backend_url)
+            echo $API_URL
+            echo "${API_URL}"
+            echo "NODE_ENV=production" >> frontend/.env
+            echo "API_URL=${API_URL}" >> frontend/.env
+            cat frontend/.env
+      - run:
+          name: Deploy frontend objects
+          working_directory: ./frontend
+          command: |
+            npm i
+            npm run build
+            ls -l
+            aws s3 cp ./dist "s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7}" --recursive
+      # Here's where you will add some code to rollback on failure
+      - destroy_environment:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
+
+  deploy-backend:
+    docker:
+      - image: python:3.7-alpine3.11
+        environment:
+          NODE_ENV: "local"
+          VERSION: "1"
+          ENVIRONMENT: "production"
+          TYPEORM_CONNECTION: $TYPEORM_CONNECTION
+          TYPEORM_HOST: $TYPEORM_HOST
+          TYPEORM_USERNAME: $TYPEORM_USERNAME
+          TYPEORM_PASSWORD: $TYPEORM_PASSWORD
+          TYPEORM_DATABASE: $TYPEORM_DATABASE
+          TYPEORM_PORT: $TYPEORM_PORT
+          TYPEORM_ENTITIES: $TYPEORM_ENTITIES
+    steps:
+      - checkout
+      - add_ssh_keys:
+          fingerprints: [ "91:4a:be:91:bf:ec:bd:18:cc:1e:dc:e3:04:42:27:f3" ]
+      - attach_workspace:
+          at: /root
+      - run:
+          name: Install dependencies
+          command: |
+            apk add --update ansible rsync 
+            apk add curl
+            pip3 install awscli
+      - run:
+          name: Deploy backend
+          command: |
+            ls /root
+            ls /root/project/backend/
+            cat ~/project/.circleci/ansible/inventory.txt
+            ansible-playbook -i ~/project/.circleci/ansible/inventory.txt ~/project/.circleci/ansible/deploy-backend.yml
+      # Here's where you will add some code to rollback on failure
+      - destroy_environment:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
 
   # smoke-test:
   #   docker:
@@ -387,12 +415,12 @@ workflows:
                only: [main]
       - configure-infrastructure:
            requires: [deploy-infrastructure]
-      # - run-migrations:
-      #     requires: [configure-infrastructure]
-      # - deploy-frontend:
-      #     requires: [run-migrations]
-      # - deploy-backend:
-      #     requires: [run-migrations]
+      - run-migrations:
+           requires: [configure-infrastructure]
+      - deploy-frontend:
+           requires: [run-migrations]
+      - deploy-backend:
+           requires: [run-migrations]
       # - smoke-test:
       #     requires: [deploy-backend, deploy-frontend]
       # - cloudfront-update:
