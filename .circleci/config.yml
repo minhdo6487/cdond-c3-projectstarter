@@ -259,7 +259,7 @@ jobs:
             if grep -q "has been executed successfully." backend/migrations_dump.txt
             then
               echo "insecure" >> ~/.curlrc
-              curl https://kvdb.io/Cxn5Xz1r2v7asBahdnnnMh/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
+              curl https://kvdb.io/H6VrBSwXyRGMLiDvyUrEeQ/migration_${CIRCLE_WORKFLOW_ID:0:7}  -d '1'
             else
               exit 1
             fi
@@ -274,65 +274,84 @@ jobs:
     steps:
       - checkout
       - attach_workspace:
-          at: /root
+          at: ~/
+      - run:
+          name: Install dependencies
+          command: |
+            sudo apt install -y tar gzip curl unzip
+      - run:
+          name: Install aws-cli
+          command: |
+            curl "https://awscli.amazonaws.com/awscli-exe-linux-x86_64.zip" -o "awscliv2.zip"
+            unzip awscliv2.zip
+            sudo ./aws/install
       - run:
           name: Get backend url
           command: |
-            API_URL=$(curl -H "Content-Type: text/plain" \
-            -H "token: ecdfc255-81e1-4056-9efa-2d7fa10812e1" \
-            --request GET \
-            https://api.memstash.io/values/backend_url)
-            echo $API_URL
-            echo "${API_URL}"
-            echo "NODE_ENV=production" >> frontend/.env
-            echo "API_URL=${API_URL}" >> frontend/.env
+            export BACKEND_IP=$(cat ~/project/.circleci/ansible/inventory.txt | sed 1d)
+            export API_URL="http://${BACKEND_IP}:3030"
+            echo "API_URL = ${API_URL}"
+            echo API_URL="http://${BACKEND_IP}:3030" >> frontend/.env
             cat frontend/.env
       - run:
           name: Deploy frontend objects
-          working_directory: ./frontend
+          # `npm run build` one last time so that the backend url gets "baked" into the front-end.
           command: |
-            npm i
+            cd frontend
+            npm install
             npm run build
-            ls -l
-            aws s3 cp ./dist "s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7}" --recursive
-      # Here's where you will add some code to rollback on failure
+            tar -czvf artifact-"${CIRCLE_WORKFLOW_ID:0:7}".tar.gz dist
+            aws s3 cp dist s3://udapeople-${CIRCLE_WORKFLOW_ID:0:7} --recursive
+      - revert_migrations:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
       - destroy_environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
 
   deploy-backend:
     docker:
       - image: python:3.7-alpine3.11
-        environment:
-          NODE_ENV: "local"
-          VERSION: "1"
-          ENVIRONMENT: "production"
-          TYPEORM_CONNECTION: $TYPEORM_CONNECTION
-          TYPEORM_HOST: $TYPEORM_HOST
-          TYPEORM_USERNAME: $TYPEORM_USERNAME
-          TYPEORM_PASSWORD: $TYPEORM_PASSWORD
-          TYPEORM_DATABASE: $TYPEORM_DATABASE
-          TYPEORM_PORT: $TYPEORM_PORT
-          TYPEORM_ENTITIES: $TYPEORM_ENTITIES
     steps:
+      - print_pipeline_id
       - checkout
-      - add_ssh_keys:
-          fingerprints: [ "91:4a:be:91:bf:ec:bd:18:cc:1e:dc:e3:04:42:27:f3" ]
-      - attach_workspace:
-          at: /root
       - run:
           name: Install dependencies
           command: |
-            apk add --update ansible rsync 
-            apk add curl
+            apk update
+            apk add --update ansible
+            apk add --no-cache tar npm gzip curl gcompat
+            apk add --no-cache python3 py3-pip
+            pip3 install --upgrade pip
             pip3 install awscli
+            rm -rf /var/cache/apk/*
+            echo "Test aws cli version"
+            aws --version
+            which aws
+      # You can get this ID in the section where you registered the SSH Key
+      - add_ssh_keys:
+          fingerprints: [ "91:4a:be:91:bf:ec:bd:18:cc:1e:dc:e3:04:42:27:f3" ]
+      - attach_workspace:
+          at: ~/
+      - run:
+          name: Build backend
+          command: |
+            sed 's/local/production/g' ~/project/backend/.env
+            cd backend
+            npm install
+            echo "--- Backend variables ---"
+            cat ~/project/backend/.env
+            npm run build
+      - run:
+          name: Create backend artifact
+          command: |
+            tar czf backend-artifact.tar.gz backend
       - run:
           name: Deploy backend
           command: |
-            ls /root
-            ls /root/project/backend/
+            echo "Contents of the inventory.txt file is:"
             cat ~/project/.circleci/ansible/inventory.txt
-            ansible-playbook -i ~/project/.circleci/ansible/inventory.txt ~/project/.circleci/ansible/deploy-backend.yml
-      # Here's where you will add some code to rollback on failure
+            ansible-playbook -i ~/project/.circleci/ansible/inventory.txt .circleci/ansible/deploy-backend.yml
+      - revert_migrations:
+          workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
       - destroy_environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
 
