@@ -188,9 +188,9 @@ jobs:
             echo "IP address:"
             cat ~/project/.circleci/ansible/inventory.txt
       - persist_to_workspace:
-         root: ~/
+         root: .
          paths:
-           - project/.circleci/ansible/inventory.txt
+           - .circleci/ansible/inventory.txt
       - destroy_environment:
           id: ${CIRCLE_WORKFLOW_ID:0:7}
           when: on_fail
@@ -203,7 +203,7 @@ jobs:
       - add_ssh_keys:
           fingerprints: "91:4a:be:91:bf:ec:bd:18:cc:1e:dc:e3:04:42:27:f3"
       - attach_workspace:
-          at: ~/
+          at: .
       - run:
           name: Install dependencies
           command: |
