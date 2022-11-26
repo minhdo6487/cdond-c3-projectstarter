@@ -311,7 +311,6 @@ jobs:
     docker:
       - image: python:3.7-alpine3.11
     steps:
-      - print_pipeline_id
       - checkout
       - run:
           name: Install dependencies
