@@ -213,7 +213,6 @@ jobs:
           command: |
             pwd &&
             ls -la
-            cat inventory
             cd .circleci/ansible
             ls -la
             ansible-playbook -i .circleci/ansible/inventory.txt .circleci/ansible/configure-server.yml
