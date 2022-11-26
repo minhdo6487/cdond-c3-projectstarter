@@ -55,15 +55,16 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys: [frontend-build]
+          keys: [ frontend-build ]
       - run:
           name: Build front-end
+          working_directory: ./frontend
           command: |
-            cd frontend
-            npm install
+            npm i
             npm run build
+            pwd && ls -al
       - save_cache:
-          paths: [frontend/node_modules]
+          paths: [ frontend/node_modules ]
           key: frontend-build
 
   build-backend:
@@ -72,15 +73,22 @@ jobs:
     steps:
       - checkout
       - restore_cache:
-          keys: [backend-build]
+          keys: [ backend-build ]
       - run:
           name: Back-end build
+          working_directory: ./backend
           command: |
-            cd backend
-            npm install
+            npm i
             npm run build
+            cp .env dist/.env
+            pwd && ls -al
+      - persist_to_workspace:
+          root: ~/
+          paths:
+            - project/backend/dist
+            - project/backend/node_modules
       - save_cache:
-          paths: [backend/node_modules]
+          paths: [ backend/node_modules ]
           key: backend-build
 
   test-frontend:
