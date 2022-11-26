@@ -193,14 +193,10 @@ jobs:
       - checkout
       - add_ssh_keys:
           fingerprints: ["91:4a:be:91:bf:ec:bd:18:cc:1e:dc:e3:04:42:27:f3"]
-      - attach_workspace:
-          at: .
       - run:
           name: Install dependencies
           command: |
-            cd .circleci/ansible
             apk add -update ansible
-            ansible --version
       - run:
           name: Configure server
           command: |
