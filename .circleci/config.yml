@@ -211,6 +211,7 @@ jobs:
       - run:
           name: Configure server
           command: |
+            apk add -update ansible
             pwd &&
             ls -la
             cd .circleci/ansible
