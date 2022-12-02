@@ -388,7 +388,6 @@ jobs:
     docker:
       - image: amazon/aws-cli
     steps:
-      - print_pipeline_id
       - run:
           name: Get old stack workflow id
           command: |
