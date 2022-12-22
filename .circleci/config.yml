@@ -130,7 +130,7 @@ jobs:
           name: scan frontend
           command: |
             cd frontend
-#            npm install
+            npm install
 #            npm audit fix --force
 
   scan-backend:
@@ -144,7 +144,7 @@ jobs:
           name: scan backend
           command: |
             cd backend
-#            npm install
+            npm install
 #            npm audit fix ---force
             
 
@@ -258,7 +258,7 @@ jobs:
           name: Run migrations
           command: |
             cd backend
-#            npm install
+            npm install
 #            npm run migrations > migrations_dump.txt
       - destroy_environment:
           workflow_id: ${CIRCLE_WORKFLOW_ID:0:7}
